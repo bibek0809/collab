@@ -1,0 +1,83 @@
+spring:
+  application:
+    name: demo
+
+
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/collabeditor
+    driver-class-name: org.postgresql.Driver
+    username: collab
+    password: collab_secret
+
+  # --- JPA ---
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  # --- Redis ---
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 5000ms
+      connect-timeout: 10000ms
+
+  # --- Kafka ---
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: collab-editor-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring:
+          json:
+            trusted:
+              packages: com.collabeditor.dto.websocket
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+# --- WebSocket ---
+collab:
+  websocket:
+    allowed-origins: "*"
+    endpoint: /ws/documents
+
+  region: ${COLLAB_REGION:us-east}
+  snapshot-interval: 1000
+  presence-ttl-seconds: 1800
+  max-editors-per-document: 5000
+
+# --- Actuator ---
+management:
+  health:
+    redis:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+server:
+  port: 8080
+
+# --- Logging ---
+logging:
+  level:
+    com.collabeditor: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
