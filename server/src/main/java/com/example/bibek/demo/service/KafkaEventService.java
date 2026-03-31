@@ -8,12 +8,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Handles Kafka-based event publishing and consumption for cross-instance
@@ -34,15 +36,23 @@ public class KafkaEventService {
     @Value("${collab.region:us-east}")
     private String currentRegion;
 
+    @Value("${collab.kafka.publish-enabled:false}")
+    private boolean publishEnabled;
+
     /**
      * Publish an operation event to Kafka for cross-instance distribution.
      */
-    public void publishOperation(String documentId, String opType,
+    public void publishOperationAsync(String documentId, String opType,
                                  String characterId, String characterValue,
                                  String previousId, String siteId,
                                  long logicalTimestamp, Map<String, Long> versionVector,
                                  String userId) {
+        if (!publishEnabled || kafkaTemplate == null) {        // ← CHECK FLAG FIRST
+            return;
+        }
+
         try {
+
             WsMessage.DocumentOperationEvent event = WsMessage.DocumentOperationEvent.builder()
                     .eventId("evt_" + UUID.randomUUID().toString().substring(0, 12))
                     .eventType("DocumentOperationEvent")
@@ -59,7 +69,15 @@ public class KafkaEventService {
                     .timestamp(Instant.now())
                     .build();
 
-            kafkaTemplate.send(KafkaConfig.DOCUMENT_OPERATIONS_TOPIC, documentId, event);
+//            kafkaTemplate.send(KafkaConfig.DOCUMENT_OPERATIONS_TOPIC, documentId, event);
+            kafkaTemplate.send(KafkaConfig.DOCUMENT_OPERATIONS_TOPIC, documentId, event)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                            log.warn("Kafka publish failed ...");  // ← warn, not error
+                        } else {
+                            log.debug("Kafka publish OK ...");
+                        }
+                    });
             log.debug("Published operation event for doc {} char {}", documentId, characterId);
         } catch (Exception e) {
             log.warn("Failed to publish to Kafka (may not be available): {}", e.getMessage());
@@ -73,7 +91,7 @@ public class KafkaEventService {
     @KafkaListener(
             topics = KafkaConfig.DOCUMENT_OPERATIONS_TOPIC,
             groupId = "${spring.kafka.consumer.group-id}",
-            autoStartup = "${spring.kafka.enabled:false}"
+            autoStartup = "${collab.kafka.publish-enabled:false}"
     )
     public void consumeOperation(WsMessage.DocumentOperationEvent event) {
         log.debug("Received Kafka event: {} for doc {}", event.getEventId(), event.getDocumentId());

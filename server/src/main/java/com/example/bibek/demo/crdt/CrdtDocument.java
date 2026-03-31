@@ -142,6 +142,7 @@ public class CrdtDocument implements Serializable {
         try {
             if (!indexById.containsKey(charId)) {
                 pendingOps.add(new PendingOperation(PendingOperation.Type.DELETE, null, charId, opVector));
+                log.debug("DELETE charId={}, exists={}", charId, indexById.containsKey(charId));
                 log.debug("Queued delete for {} — character not yet present", charId);
                 return false;
             }

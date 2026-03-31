@@ -1,8 +1,7 @@
 package com.example.bibek.demo.dto.websocket;
 
 
-import lombok.Builder;
-import lombok.Getter;
+import lombok.*;
 
 import java.io.Serializable;
 import java.time.Instant;
@@ -19,34 +18,40 @@ public sealed interface WsMessage extends Serializable {
 
     @Getter
     @Builder
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
     final class JoinMessage implements WsMessage {
-        private final String documentId;
-        private final Map<String, Long> versionVector;
+        private  String documentId;
+        private  Map<String, Long> versionVector;
         @Override public String type() { return "JOIN"; }
     }
 
     @Getter @Builder
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
     final class OperationMessage implements WsMessage {
-        private final String documentId;
-        private final String opType;      // INSERT, DELETE, FORMAT
-        private final String characterId;
-        private final String characterValue;
-        private final String previousId;
-        private final String siteId;
-        private final long logicalTimestamp;
-        private final Map<String, Long> versionVector;
-        private final String userId;
+        private  String documentId;
+        private  String opType;      // INSERT, DELETE, FORMAT
+        private  String characterId;
+        private  String characterValue;
+        private  String previousId;
+        private  String siteId;
+        private  long logicalTimestamp;
+        private  Map<String, Long> versionVector;
+        private  String userId;
         @Override public String type() { return "OPERATION"; }
     }
 
-    @Getter @Builder
+    @Getter @Setter @AllArgsConstructor @NoArgsConstructor @Builder
     final class CursorUpdateMessage implements WsMessage {
-        private final String documentId;
-        private final String userId;
-        private final String userName;
-        private final int cursorPosition;
-        private final Integer selectionStart;
-        private final Integer selectionEnd;
+        private  String documentId;
+        private  String userId;
+        private  String userName;
+        private  int cursorPosition;
+        private  Integer selectionStart;
+        private  Integer selectionEnd;
         @Override public String type() { return "CURSOR_UPDATE"; }
     }
 
@@ -54,8 +59,8 @@ public sealed interface WsMessage extends Serializable {
 
     @Getter @Builder
     final class OperationAck implements WsMessage {
-        private final String operationId;
-        private final String status;
+        private  String operationId;
+        private  String status;
         @Override public String type() { return "OPERATION_ACK"; }
     }
 

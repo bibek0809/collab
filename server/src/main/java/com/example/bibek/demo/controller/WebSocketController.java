@@ -75,7 +75,6 @@ public class WebSocketController {
     }
 
     // ─── OPERATION: Client sends an edit operation ───
-
     @MessageMapping("/document/{documentId}/operation")
     public void handleOperation(@DestinationVariable String documentId,
                                 @Payload WsMessage.OperationMessage message) {
@@ -96,18 +95,6 @@ public class WebSocketController {
                         opVector
                 );
 
-                // Publish to Kafka for cross-instance sync
-                kafkaEventService.publishOperation(
-                        documentId, "INSERT",
-                        inserted.getId(),
-                        String.valueOf(inserted.getValue()),
-                        inserted.getPreviousId(),
-                        inserted.getSiteId(),
-                        inserted.getLogicalTimestamp(),
-                        crdtService.getVersionVector(documentId),
-                        message.getUserId()
-                );
-
                 // Broadcast to all subscribers
                 WsMessage.OperationBroadcast broadcast = WsMessage.OperationBroadcast.builder()
                         .opType("INSERT")
@@ -122,6 +109,19 @@ public class WebSocketController {
 
                 messagingTemplate.convertAndSend(
                         "/topic/document/" + documentId, broadcast);
+
+                // Publish to Kafka for cross-instance sync
+                kafkaEventService.publishOperationAsync(
+                        documentId, "INSERT",
+                        inserted.getId(),
+                        String.valueOf(inserted.getValue()),
+                        inserted.getPreviousId(),
+                        inserted.getSiteId(),
+                        inserted.getLogicalTimestamp(),
+                        crdtService.getVersionVector(documentId),
+                        message.getUserId()
+                );
+
 
                 // Send ACK to sender
                 WsMessage.OperationAck ack = WsMessage.OperationAck.builder()
@@ -142,17 +142,6 @@ public class WebSocketController {
                 );
 
                 if (deleted) {
-                    kafkaEventService.publishOperation(
-                            documentId, "DELETE",
-                            message.getCharacterId(),
-                            null,
-                            null,
-                            message.getSiteId(),
-                            message.getLogicalTimestamp(),
-                            crdtService.getVersionVector(documentId),
-                            message.getUserId()
-                    );
-
                     WsMessage.OperationBroadcast broadcast = WsMessage.OperationBroadcast.builder()
                             .opType("DELETE")
                             .characterId(message.getCharacterId())
@@ -164,11 +153,23 @@ public class WebSocketController {
 
                     messagingTemplate.convertAndSend(
                             "/topic/document/" + documentId, broadcast);
+
+                    kafkaEventService.publishOperationAsync(
+                            documentId, "DELETE",
+                            message.getCharacterId(),
+                            null,
+                            null,
+                            message.getSiteId(),
+                            message.getLogicalTimestamp(),
+                            crdtService.getVersionVector(documentId),
+                            message.getUserId()
+                    );
                 }
 
                 WsMessage.OperationAck ack = WsMessage.OperationAck.builder()
                         .operationId(message.getCharacterId())
-                        .status(deleted ? "APPLIED" : "NOOP")
+//                        .status(deleted ? "APPLIED" : "NOOP")
+                        .status(deleted ? "APPLIED" : "PENDING")
                         .build();
                 messagingTemplate.convertAndSend(
                         "/topic/document/" + documentId + "/ack/" + message.getUserId(), ack);

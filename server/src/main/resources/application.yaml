@@ -2,7 +2,8 @@ spring:
   application:
     name: demo
 
-
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
 
   datasource:
     url: jdbc:postgresql://localhost:5432/collabeditor
@@ -50,6 +51,8 @@ spring:
 
 # --- WebSocket ---
 collab:
+  kafka:
+    publish-enabled: ${KAFKA_PUBLISH_ENABLED:true}
   websocket:
     allowed-origins: "*"
     endpoint: /ws/documents
